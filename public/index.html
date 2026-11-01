@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotation and invoice generator · PF Cleaning Services</title>
+<style>
+  :root {
+    --navy: #2e3192; --sky: #4aa8e0; --ink: #1b1d2b; --muted: #636780;
+    --line: #dcdfea; --bg: #f4f6fb; --card: #fff; --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #e8eaf6; --muted: #a3a8c3; --line: #3a3e5c; --bg: #14162a; --card: #1d2040; --sky: #6cbcec; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); }
+  header { background: var(--navy); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header img { height: 38px; background: #fff; border-radius: 6px; padding: 3px 8px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(340px, 520px) 1fr; gap: 24px; padding: 24px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  form, .preview { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  fieldset { border: 0; padding: 0; margin: 0 0 20px; }
+  legend { font-weight: 700; font-size: 15px; padding: 0; margin-bottom: 10px; color: var(--navy); }
+  @media (prefers-color-scheme: dark) { legend { color: var(--sky); } }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, textarea, select { width: 100%; font: inherit; color: inherit; background: transparent;
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--sky); outline-offset: 1px; }
+  textarea { resize: vertical; min-height: 90px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { margin-bottom: 12px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; border-radius: 6px; padding: 10px 18px; cursor: pointer; border: 1px solid var(--navy); }
+  .primary { background: var(--navy); color: #fff; }
+  .secondary { background: transparent; color: var(--navy); }
+  @media (prefers-color-scheme: dark) { .secondary { color: var(--sky); border-color: var(--sky); } }
+  button:disabled { opacity: .6; cursor: wait; }
+  .preview { position: sticky; top: 16px; height: calc(100vh - 100px); min-height: 480px; display: flex; flex-direction: column; }
+  .preview iframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .empty { margin: auto; text-align: center; color: var(--muted); max-width: 30ch; }
+  .switch { display: inline-flex; border: 1px solid var(--navy); border-radius: 8px; overflow: hidden; margin-bottom: 18px; }
+  .switch button { border: 0; border-radius: 0; background: transparent; color: var(--navy); padding: 8px 20px; }
+  .switch button[aria-selected="true"] { background: var(--navy); color: #fff; }
+  @media (prefers-color-scheme: dark) { .switch { border-color: var(--sky); } .switch button { color: var(--sky); }
+    .switch button[aria-selected="true"] { background: var(--sky); color: #14162a; } }
+  .row-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .row-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; }
+  .row-card textarea { min-height: 60px; }
+  .link { border: 0; background: none; color: var(--err); padding: 0; font-weight: 600; }
+  #msg { min-height: 1.4em; margin-top: 10px; font-size: 13px; color: var(--err); }
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="PF Cleaning Services">
+  <h1>Quotation and invoice generator</h1>
+</header>
+
+<main>
+  <form id="form" novalidate>
+    <div class="switch" role="tablist" aria-label="Document type">
+      <button type="button" role="tab" id="tabQ" aria-selected="true">Quotation</button>
+      <button type="button" role="tab" id="tabI" aria-selected="false">Invoice</button>
+    </div>
+    <div id="qFields">
+    <fieldset>
+      <legend>Client and dates</legend>
+      <div class="field">
+        <label for="billTo">Bill to (one line per row)</label>
+        <textarea id="billTo" name="billTo" rows="3" placeholder="Client name&#10;Address"></textarea>
+      </div>
+      <div class="grid">
+        <div class="field"><label for="estimateDate">Estimate date</label>
+          <input type="date" id="estimateDate" name="estimateDate" required></div>
+        <div class="field"><label for="expiresOn">Expires on</label>
+          <input type="date" id="expiresOn" name="expiresOn" required></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Work</legend>
+      <div class="field">
+        <label for="scope">Scope of work</label>
+        <textarea id="scope" name="scope" rows="7"></textarea>
+        <div class="hint">One task per line. Numbering is added automatically.</div>
+      </div>
+      <div class="field">
+        <label for="quantity">Quantity / areas</label>
+        <textarea id="quantity" name="quantity" rows="7"></textarea>
+        <div class="hint">One item per line. Shown as bullets.</div>
+      </div>
+      <div class="grid">
+        <div class="field"><label for="duration">Duration</label>
+          <input id="duration" name="duration"></div>
+        <div class="field"><label for="teamSize">Team size</label>
+          <input id="teamSize" name="teamSize"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Price and terms</legend>
+      <div class="grid">
+        <div class="field"><label for="currency">Currency</label>
+          <input id="currency" name="currency"></div>
+        <div class="field"><label for="amount">Amount</label>
+          <input type="number" id="amount" name="amount" min="0" step="any" required></div>
+      </div>
+      <div class="field">
+        <label for="notes">Notes / terms</label>
+        <textarea id="notes" name="notes" rows="3"></textarea>
+      </div>
+    </fieldset>
+
+    </div>
+    <div id="iFields" hidden>
+      <fieldset>
+        <legend>Invoice details</legend>
+        <div class="field"><label for="clientName">Client name</label><input id="clientName"></div>
+        <div class="grid">
+          <div class="field"><label for="lpoNo">L.P.O No</label><input id="lpoNo"></div>
+          <div class="field"><label for="invoiceNo">Invoice No</label><input id="invoiceNo"></div>
+        </div>
+        <div class="grid">
+          <div class="field"><label for="invDate">Date</label><input type="date" id="invDate"></div>
+          <div class="field"><label for="invCurrency">Currency</label><input id="invCurrency" value="KES"></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Line items</legend>
+        <div id="rows"></div>
+        <button type="button" class="secondary" id="addRow">Add line item</button>
+        <div class="hint" style="margin-top:8px">The total of each row is its price. Sub-total and total are calculated.</div>
+      </fieldset>
+      <fieldset>
+        <legend>Footer</legend>
+        <div class="field"><label for="paymentNote">Payment note</label>
+          <textarea id="paymentNote" rows="2"></textarea></div>
+      </fieldset>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="previewBtn">Preview PDF</button>
+      <button type="submit" class="primary" id="downloadBtn">Download PDF</button>
+    </div>
+    <div id="msg" role="status"></div>
+  </form>
+
+  <section class="preview" aria-label="PDF preview">
+    <div class="empty" id="empty">Fill in the form, then choose Preview PDF to see the quotation here.</div>
+    <iframe id="frame" title="Quotation preview" hidden></iframe>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const form = $("form");
+
+// Defaults taken from the sample quotation
+const iso = (d) => d.toISOString().slice(0, 10);
+const today = new Date();
+const plus30 = new Date(today.getTime() + 30 * 864e5);
+const defaults = {
+  estimateDate: iso(today),
+  expiresOn: iso(plus30),
+  scope: [
+    "Cleaning the windows",
+    "Cleaning the light fixtures",
+    "Cleaning the gypsum pockets",
+    "Scrubbing the tiled floors",
+    "Wet-mopping the wooden floors",
+    "Scrubbing terrazzo floor at the roof top.",
+    "Scrubbing and destaining cabros and mazzeras floors",
+  ].join("\n"),
+  quantity: [
+    "Bedrooms: 7", "Kitchen", "Sitting area", "Dinning area", "Lobby area", "Washrooms",
+    "TV room", "Pantry area", "Gazzebo", "SQ", "Entire compound", "Balconies", "Rooftop",
+    "Glass roof pergola",
+  ].join("\n"),
+  duration: "6 Days",
+  teamSize: "10 Janitors",
+  currency: "KES",
+  amount: 100000,
+  notes: "70% payment upon confirmation of the service.\n30% payment upon completion.",
+};
+for (const [k, v] of Object.entries(defaults)) $(k).value = v;
+
+// Keep expiry at +30 days when the estimate date changes (still editable)
+$("estimateDate").addEventListener("change", (e) => {
+  const d = new Date(e.target.value);
+  if (!isNaN(d)) $("expiresOn").value = iso(new Date(d.getTime() + 30 * 864e5));
+});
+
+const msg = (t) => ($("msg").textContent = t || "");
+
+let type = "quotation";
+function setType(t) {
+  type = t;
+  $("qFields").hidden = t !== "quotation"; $("iFields").hidden = t !== "invoice";
+  $("tabQ").setAttribute("aria-selected", t === "quotation");
+  $("tabI").setAttribute("aria-selected", t === "invoice");
+  $("downloadBtn").textContent = "Download PDF";
+}
+$("tabQ").onclick = () => setType("quotation");
+$("tabI").onclick = () => setType("invoice");
+
+// Invoice defaults and rows
+$("invDate").value = iso(today);
+$("paymentNote").value = "Payment should be made in cash or cheque made payable to\nPoint of Favour";
+function addRow(v = {}) {
+  const el = document.createElement("div");
+  el.className = "row-card";
+  el.innerHTML = `<div class="top"><span>Item</span><button type="button" class="link">Remove</button></div>
+    <div class="field"><label>Service (one per line)</label><textarea class="svc"></textarea></div>
+    <div class="grid">
+      <div class="field"><label>Quantity / description (one per line)</label><textarea class="qty"></textarea></div>
+      <div class="field"><label>Price</label><input type="number" class="price" min="0" step="any"></div>
+    </div>`;
+  el.querySelector(".svc").value = v.service || "";
+  el.querySelector(".qty").value = v.quantity || "";
+  el.querySelector(".price").value = v.price ?? "";
+  el.querySelector(".link").onclick = () => { el.remove(); renumber(); };
+  $("rows").append(el); renumber();
+}
+function renumber() {
+  [...$("rows").children].forEach((r, i) => (r.querySelector(".top span").textContent = "Item " + (i + 1)));
+}
+$("addRow").onclick = () => addRow();
+addRow({ service: "Cleaning the space\nServing guests", quantity: "Overtime in five different instances", price: 5000 });
+
+function invoiceData() {
+  const items = [...$("rows").children].map((r) => ({
+    service: r.querySelector(".svc").value, quantity: r.querySelector(".qty").value,
+    price: r.querySelector(".price").value }));
+  if (!items.length) throw new Error("Add at least one line item.");
+  if (!$("clientName").value.trim()) throw new Error("Enter the client name.");
+  if (items.some((i) => i.price === "" || Number(i.price) < 0)) throw new Error("Enter a price for every line item.");
+  return { type: "invoice", clientName: $("clientName").value, lpoNo: $("lpoNo").value,
+    invoiceNo: $("invoiceNo").value, date: $("invDate").value, currency: $("invCurrency").value,
+    items, paymentNote: $("paymentNote").value,
+    fileName: "Invoice-" + ($("invoiceNo").value || $("invDate").value) };
+}
+
+async function fetchPdf() {
+  const data = type === "invoice" ? invoiceData() : Object.fromEntries(new FormData(form));
+  if (type === "quotation") {
+  if (!data.estimateDate || !data.expiresOn) throw new Error("Enter the estimate and expiry dates.");
+  if (data.amount === "" || Number(data.amount) < 0) throw new Error("Enter a valid amount.");
+  data.fileName = "Quotation-" + data.estimateDate;
+  }
+  const res = await fetch("/api/pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("The server could not create the PDF. Check the terminal for details.");
+  return { blob: await res.blob(), name: data.fileName + ".pdf" };
+}
+
+async function run(btn, action) {
+  msg(); btn.disabled = true;
+  try { await action(await fetchPdf()); }
+  catch (e) { msg(e.message); }
+  finally { btn.disabled = false; }
+}
+
+let lastUrl;
+$("previewBtn").onclick = (e) => run(e.currentTarget, ({ blob }) => {
+  if (lastUrl) URL.revokeObjectURL(lastUrl);
+  lastUrl = URL.createObjectURL(blob);
+  $("frame").src = lastUrl; $("frame").hidden = false; $("empty").hidden = true;
+});
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  run($("downloadBtn"), ({ blob, name }) => {
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+});
+</script>
+</body>
+</html>
