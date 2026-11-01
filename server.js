@@ -10,14 +10,24 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// One shared browser instance: much faster than launching per request
 let browserPromise;
 const getBrowser = () =>
-  (browserPromise ||= puppeteer.launch({
-    headless: "new",
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  }));
+  (browserPromise ||= (async () => {
+    if (process.env.VERCEL) {
+      const chromium = require("@sparticuz/chromium");
+      return puppeteer.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+    }
+
+    return puppeteer.launch({
+      headless: "new",
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+  })());
 
 app.post(["/api/quotation.pdf", "/api/pdf"], async (req, res) => {
   let page;
@@ -48,9 +58,13 @@ app.post(["/api/quotation.pdf", "/api/pdf"], async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Quotation app running at http://localhost:${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Quotation app running at http://localhost:${PORT}`));
 
-process.on("SIGINT", async () => {
-  if (browserPromise) await (await browserPromise).close();
-  process.exit(0);
-});
+  process.on("SIGINT", async () => {
+    if (browserPromise) await (await browserPromise).close();
+    process.exit(0);
+  });
+}
+
+module.exports = app;
