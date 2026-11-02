@@ -1,14 +1,13 @@
 {
   "name": "pf-quotation-generator",
   "version": "1.0.0",
-  "description": "Fill a form, export a PF Cleaning Services quotation as PDF",
+  "description": "Quotation and invoice PDF generator (client-side pdfmake, no browser needed)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^127.0.0",
     "express": "^4.19.2",
-    "puppeteer": "^22.15.0"
+    "pdfmake": "^0.2.20"
   }
 }

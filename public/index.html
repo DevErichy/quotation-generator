@@ -155,6 +155,10 @@
   </section>
 </main>
 
+<script src="vendor/pdfmake.min.js"></script>
+<script src="vendor/vfs_fonts.js"></script>
+<script src="logo.js"></script>
+<script src="docs.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const form = $("form");
@@ -251,13 +255,11 @@ async function fetchPdf() {
   if (data.amount === "" || Number(data.amount) < 0) throw new Error("Enter a valid amount.");
   data.fileName = "Quotation-" + data.estimateDate;
   }
-  const res = await fetch("/api/pdf", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+  const def = type === "invoice" ? PFDocs.buildInvoice(data) : PFDocs.buildQuotation(data);
+  const blob = await new Promise((resolve, reject) => {
+    try { pdfMake.createPdf(def).getBlob(resolve); } catch (e) { reject(e); }
   });
-  if (!res.ok) throw new Error("The server could not create the PDF. Check the terminal for details.");
-  return { blob: await res.blob(), name: data.fileName + ".pdf" };
+  return { blob, name: data.fileName + ".pdf" };
 }
 
 async function run(btn, action) {
